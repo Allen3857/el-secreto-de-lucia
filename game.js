@@ -173,24 +173,9 @@ function wrong(h){wrongSfx();setFeedback(h,'bad');}
 function correctFb(h){correctSfx();setFeedback(h,'good');}
 
 
-let spanishVoice=null;
+const AUDIO_FILES = {"hotel": "hotel.mp3", "mesa": "mesa.mp3", "hospital": "hospital.mp3", "jardín": "jardin.mp3", "musa": "musa.mp3", "moto": "moto.mp3", "masa": "masa.mp3", "misa": "misa.mp3", "casa": "casa.mp3", "cine": "cine.mp3", "cubo": "cubo.mp3", "jamón": "jamon.mp3", "gente": "gente.mp3", "gato": "gato.mp3", "girasol": "girasol.mp3", "pero": "pero.mp3", "perro": "perro.mp3", "niño": "nino.mp3", "secreto": "secreto.mp3"};
 let audioRunId=0;
 let currentAudio=null;
-
-function chooseSpanishVoice(){
-  if(!('speechSynthesis' in window))return;
-  const voices=speechSynthesis.getVoices();
-  const es=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
-  spanishVoice=
-    es.find(v=>(v.lang||'').toLowerCase()==='es-es' && /google|microsoft|helena|pablo|alvaro|jorge|lucia/i.test(v.name)) ||
-    es.find(v=>(v.lang||'').toLowerCase()==='es-es') ||
-    es[0] || null;
-}
-
-if('speechSynthesis' in window){
-  chooseSpanishVoice();
-  speechSynthesis.addEventListener?.('voiceschanged',chooseSpanishVoice);
-}
 
 function stopSpeech(){
   audioRunId++;
@@ -201,37 +186,48 @@ function stopSpeech(){
     }catch(e){}
     currentAudio=null;
   }
-  if('speechSynthesis' in window){
-    speechSynthesis.cancel();
-  }
 }
 
-function speakOne(text,{rate=.58,onEnd=null}={}){
-  if(!('speechSynthesis' in window)){
+function audioPath(word){
+  const filename=AUDIO_FILES[word];
+  return filename ? `audio/${filename}` : '';
+}
+
+function playFixedAudio(word,{rate=1,onEnd=null}={}){
+  const src=audioPath(word);
+  if(!src){
+    console.error('Missing fixed audio:',word);
     if(onEnd)onEnd();
     return;
   }
 
-  chooseSpanishVoice();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='es-ES';
-  if(spanishVoice)u.voice=spanishVoice;
-  u.rate=rate;
-  u.pitch=1;
+  const a=new Audio(src);
+  currentAudio=a;
+  a.preload='auto';
+  a.playbackRate=rate;
+  a.preservesPitch=true;
 
-  let finished=false;
+  let done=false;
   const finish=()=>{
-    if(finished)return;
-    finished=true;
+    if(done)return;
+    done=true;
+    if(currentAudio===a)currentAudio=null;
     if(onEnd)onEnd();
   };
 
-  u.onend=finish;
-  u.onerror=finish;
-  speechSynthesis.speak(u);
+  a.onended=finish;
+  a.onerror=()=>{
+    console.error('Audio file failed:',src);
+    finish();
+  };
+
+  a.play().catch(err=>{
+    console.error('Audio play failed:',src,err);
+    finish();
+  });
 }
 
-function playWord(word,{repeat=2,rate=.58,gap=750}={}){
+function playWord(word,{repeat=2,rate=1,gap=750}={}){
   registerAudio(word);
   stopSpeech();
   const runId=audioRunId;
@@ -239,16 +235,13 @@ function playWord(word,{repeat=2,rate=.58,gap=750}={}){
 
   const next=()=>{
     if(runId!==audioRunId)return;
-
-    speakOne(word,{
+    playFixedAudio(word,{
       rate,
       onEnd:()=>{
         if(runId!==audioRunId)return;
         count++;
         if(count<repeat){
-          setTimeout(()=>{
-            if(runId===audioRunId)next();
-          },gap);
+          setTimeout(()=>{ if(runId===audioRunId) next(); },gap);
         }
       }
     });
@@ -257,7 +250,7 @@ function playWord(word,{repeat=2,rate=.58,gap=750}={}){
   next();
 }
 
-function playSequence(words,{rate=.58,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
+function playSequence(words,{rate=1,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
   const runId=audioRunId;
@@ -286,9 +279,7 @@ function playSequence(words,{rate=.58,gap=1150,repeat=2,betweenPasses=2800,statu
 
     if(index>=words.length){
       if(pass>=repeat){
-        setTimeout(()=>{
-          if(runId===audioRunId)setStatus(0);
-        },500);
+        setTimeout(()=>{ if(runId===audioRunId) setStatus(0); },500);
         return;
       }
 
@@ -304,13 +295,11 @@ function playSequence(words,{rate=.58,gap=1150,repeat=2,betweenPasses=2800,statu
     }
 
     const word=words[index++];
-    speakOne(word,{
+    playFixedAudio(word,{
       rate,
       onEnd:()=>{
         if(runId!==audioRunId)return;
-        setTimeout(()=>{
-          if(runId===audioRunId)nextWord();
-        },gap);
+        setTimeout(()=>{ if(runId===audioRunId) nextWord(); },gap);
       }
     });
   };
@@ -472,8 +461,8 @@ function r5(){
     <div class="body"><strong>¿Suena como A o como B?</strong><div class="small muted">這段錄音聽起來像 A 還是 B？</div></div>
     <div class="grid2"><button class="btn" data-one data-value="A" aria-pressed="false" type="button">A</button><button class="btn" data-one data-value="B" aria-pressed="false" type="button">B</button></div>
     <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
-    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:.78,gap:800}));
-    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:.78,gap:800});
+    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:1,gap:800}));
+    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:1,gap:800});
     single('[data-one]');
     q('#check').onclick=()=>{
       if(s.choice===null){
@@ -501,7 +490,7 @@ function r5(){
   <div class="grid2"><button class="sound" data-r="pero" type="button">🔊 pero</button><button class="sound" data-r="perro" type="button">🔊 perro</button></div>
   <div class="grid2"><button class="btn" data-one data-value="pero" aria-pressed="false" type="button">pero</button><button class="btn" data-one data-value="perro" aria-pressed="false" type="button">perro</button></div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button><div id="feedback" class="hide panel body small"></div>`);
-  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:.78,gap:800}));
+  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:1,gap:800}));
   single('[data-one]');
   q('#check').onclick=()=>{
     if(s.choice===null){
