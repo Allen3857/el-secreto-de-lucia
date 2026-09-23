@@ -260,12 +260,28 @@ function playWord(word,{repeat=2,rate=.88,gap=520}={}){
   playOnce();
 }
 
-function playSequence(words,{rate=.84,gap=1050,repeat=2}={}){
+function playSequence(words,{rate=.84,gap=1050,repeat=2,betweenPasses=2500,statusEl=null}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
   const runId=audioRunId;
   let sequenceCount=0;
   let i=0;
+
+  const setStatus=(pass)=>{
+    if(!statusEl)return;
+    const el=q(statusEl);
+    if(!el)return;
+    if(pass===1){
+      el.classList.remove('hide');
+      el.innerHTML='<strong>Primera vez</strong> / 第一次';
+    }else if(pass===2){
+      el.classList.remove('hide');
+      el.innerHTML='<strong>Segunda vez</strong> / 第二次';
+    }else{
+      el.classList.add('hide');
+      el.innerHTML='';
+    }
+  };
 
   const next=()=>{
     if(runId!==audioRunId)return;
@@ -274,10 +290,16 @@ function playSequence(words,{rate=.84,gap=1050,repeat=2}={}){
       sequenceCount++;
       if(sequenceCount>=repeat){
         currentAudio=null;
+        setTimeout(()=>setStatus(0),500);
         return;
       }
+
       i=0;
-      setTimeout(next,gap);
+      setTimeout(()=>{
+        if(runId!==audioRunId)return;
+        setStatus(sequenceCount+1);
+        next();
+      },betweenPasses);
       return;
     }
 
@@ -308,6 +330,7 @@ function playSequence(words,{rate=.84,gap=1050,repeat=2}={}){
     });
   };
 
+  setStatus(1);
   next();
 }
 
@@ -315,6 +338,11 @@ root.addEventListener('click',(event)=>{
   const id=event.target && event.target.id;
   if(id==='check' || id==='check-final'){
     stopSpeech();
+    const p2pass=q('#p2-pass');
+    if(p2pass){
+      p2pass.classList.add('hide');
+      p2pass.innerHTML='';
+    }
   }
 },true);
 
@@ -388,10 +416,14 @@ function r1(){
 
 function r2(){
   show(`<div class="body">Ahora Lucía te manda cinco palabras.<div class="small muted">接著，Lucía 傳來五個單字。</div></div>${player('Escucha cinco palabras.','請聽五個單字。')}
+  <div id="p2-pass" class="hide panel body small" aria-live="polite"></div>
   <div class="body"><strong>¿En cuál de las cinco palabras escuchas la vocal “e”?</strong><div class="small muted">五個單字中，你在第幾個單字聽到母音 e？</div></div>
   <div class="grid5">${[1,2,3,4,5].map(n=>`<button class="btn" data-one data-value="${n}" aria-pressed="false" type="button">${n}</button>`).join('')}</div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
-  q('#play').onclick=()=>playSequence(['musa','mesa','moto','masa','misa']);
+  q('#play').onclick=()=>playSequence(
+    ['musa','mesa','moto','masa','misa'],
+    {repeat:2,betweenPasses:2500,statusEl:'#p2-pass'}
+  );
   single('[data-one]');
   q('#check').onclick=()=>{
     if(s.choice===null)return fb('Selecciona una respuesta.<br>請先選一個答案。');
