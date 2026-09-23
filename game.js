@@ -183,17 +183,32 @@ function chooseSpanishVoice(){
   const voices=speechSynthesis.getVoices();
   const spanish=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
 
-  const femaleName=/helena|elvira|dalia|sabina|luc[ií]a|paulina|m[oó]nica|paloma|laura|soledad|mar[ií]a|carmen|female/i;
-  const maleName=/pablo|jorge|[aá]lvaro|ra[uú]l|diego|carlos|mateo|male/i;
+  // Restore the voice family that was used in the earlier working versions:
+  // prefer Google's Spanish voice first, then explicitly female Spanish voices.
+  const googleSpanish = spanish.find(v =>
+    /google/i.test(v.name) && /espa[nñ]ol|spanish/i.test(v.name)
+  );
+
+  const explicitFemale = spanish.find(v =>
+    /helena|elvira|dalia|sabina|luc[ií]a|paulina|m[oó]nica|paloma|laura|soledad|mar[ií]a|carmen|female/i.test(v.name)
+  );
+
+  const knownMale = /pablo|jorge|[aá]lvaro|ra[uú]l|diego|carlos|mateo|arnau|enrique|male/i;
+  const nonMaleSpain = spanish.find(v =>
+    (v.lang||'').toLowerCase()==='es-es' && !knownMale.test(v.name)
+  );
+  const nonMaleAny = spanish.find(v => !knownMale.test(v.name));
 
   spanishVoice =
-    spanish.find(v=>(v.lang||'').toLowerCase()==='es-es' && femaleName.test(v.name)) ||
-    spanish.find(v=>femaleName.test(v.name)) ||
-    spanish.find(v=>/google.*espa[nñ]ol|espa[nñ]ol.*google/i.test(v.name) && !maleName.test(v.name)) ||
-    spanish.find(v=>(v.lang||'').toLowerCase()==='es-es' && !maleName.test(v.name)) ||
-    spanish.find(v=>!maleName.test(v.name)) ||
+    googleSpanish ||
+    explicitFemale ||
+    nonMaleSpain ||
+    nonMaleAny ||
     spanish[0] ||
     null;
+
+  // Useful only for troubleshooting; nothing is shown to students.
+  window.__luciaSpanishVoice = spanishVoice ? spanishVoice.name : '';
 }
 
 if('speechSynthesis' in window){
