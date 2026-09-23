@@ -220,7 +220,7 @@ function fallbackSpeak(text, rate=.60){
   speechSynthesis.speak(u);
 }
 
-function playWord(word,{repeat=1,rate=.88,gap=520}={}){
+function playWord(word,{repeat=2,rate=.88,gap=520}={}){
   registerAudio(word);
   stopSpeech();
   const runId=audioRunId;
@@ -260,14 +260,26 @@ function playWord(word,{repeat=1,rate=.88,gap=520}={}){
   playOnce();
 }
 
-function playSequence(words,{rate=.84,gap=1050}={}){
+function playSequence(words,{rate=.84,gap=1050,repeat=2}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
   const runId=audioRunId;
+  let sequenceCount=0;
   let i=0;
 
   const next=()=>{
-    if(runId!==audioRunId || i>=words.length)return;
+    if(runId!==audioRunId)return;
+
+    if(i>=words.length){
+      sequenceCount++;
+      if(sequenceCount>=repeat){
+        currentAudio=null;
+        return;
+      }
+      i=0;
+      setTimeout(next,gap);
+      return;
+    }
 
     const word=words[i++];
     const a=new Audio(googleTtsUrl(word));
@@ -436,7 +448,7 @@ function r4(){
 function r5(){
   if(s.step===0){
     show(`<div class="body">El quinto mensaje tiene dos sonidos muy parecidos.<div class="small muted">第五段留言裡有兩個很像的聲音。</div></div>
-    <div class="panel body small">Primero, escucha A y B. Cada botón reproduce la palabra dos veces.<br>先聽 A 和 B。每個按鈕會把單字播放兩次。</div>
+    <div class="panel body small">Primero, escucha A y B.<br>先聽 A 和 B。</div>
     <div class="grid2"><button class="btn" data-ab="pero" type="button">🔊<br>A</button><button class="btn" data-ab="perro" type="button">🔊<br>B</button></div>
     <div class="panel body small">Ahora escucha un tercer audio.<br>現在再聽第三段錄音。</div>
     <button id="mystery" class="btn" type="button">▶ REPRODUCIR / 播放</button>
