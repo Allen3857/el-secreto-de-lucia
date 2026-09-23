@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>El secreto de Lucía / Lucía 的秘密</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="lucia-vnext" class="app">
+  <section id="start" class="card stack">
+    <h1>El secreto de Lucía / Lucía 的秘密</h1>
+
+    <div class="panel body">
+      <p>Lucía sabe que acabas de empezar a estudiar español, así que ha preparado un pequeño reto para ti.<br>Lucía 知道你剛開始學西班牙文，所以準備了一個小挑戰給你。</p>
+      <p>Te ha enviado siete mensajes de voz. En cada uno hay una pista.<br>她傳給你七段語音，每一段裡都藏著一個線索。</p>
+      <p>Si consigues resolverlos todos, descubrirás lo que Lucía quiere decirte.<br>如果能把七個線索全部解開，你就會知道 Lucía 想告訴你什麼。</p>
+    </div>
+
+    <div>
+      <h2>Antes de empezar / 開始之前</h2>
+      <div class="rules">
+        <div class="rule">
+          <div>🎧</div>
+          <div>
+            <strong>Prepara tus auriculares o comprueba el volumen.</strong><br>
+            <span class="muted">準備好耳機或確認音量。</span><br>
+            <span class="muted">Este juego se completa principalmente escuchando. Asegúrate de que puedes oír el audio con claridad.</span><br>
+            <span class="muted">這個遊戲主要靠聽力完成，請先確認能清楚聽到聲音。</span>
+          </div>
+        </div>
+        <div class="rule">
+          <div>🔊</div>
+          <div>
+            <strong>Puedes repetir los audios.</strong><br>
+            <span class="muted">錄音可以重播。</span><br>
+            <span class="muted">Si no lo has oído bien, vuelve a reproducirlo. No hace falta responder con prisa.</span><br>
+            <span class="muted">沒有聽清楚時，可以再播放一次，不需要急著作答。</span>
+          </div>
+        </div>
+        <div class="rule">
+          <div>💡</div>
+          <div>
+            <strong>Puedes usar las pistas cuando las necesites.</strong><br>
+            <span class="muted">需要時可以使用提示。</span><br>
+            <span class="muted">Si te atascas, abre Hint para continuar.</span><br>
+            <span class="muted">如果卡住了，可以打開 Hint 幫助你繼續。</span>
+          </div>
+        </div>
+        <div class="rule">
+          <div>➡️</div>
+          <div>
+            <strong>Completa los siete mensajes en orden.</strong><br>
+            <span class="muted">依序完成七段留言。</span><br>
+            <span class="muted">Cuando resuelvas uno, pasarás al siguiente. Al terminar todos, descubrirás lo que Lucía quiere decirte.</span><br>
+            <span class="muted">每解開一段，就會繼續到下一段；全部完成後，才會知道 Lucía 想說什麼。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-block">
+      <div>
+        <label for="sid">Número de estudiante / 學號</label>
+        <input id="sid" autocomplete="off">
+      </div>
+      <div>
+        <label for="sname">Nombre / 姓名</label>
+        <input id="sname" autocomplete="off">
+      </div>
+      <div id="start-error" class="hide error"></div>
+    </div>
+
+    <button id="begin" class="primary" type="button">EMPEZAR / 開始</button>
+  </section>
+
+  <section id="game" class="hide stack">
+    <div class="card stack-sm">
+      <div>
+        <div id="stage-label" class="stage-title"></div>
+        <div id="student-label" class="muted small"></div>
+      </div>
+      <div id="progress" class="progress-wrap"></div>
+      <div id="found-wrap" class="hide">
+        <div class="found-title">Letras encontradas / 找到的字母</div>
+        <div id="found-list" class="found-list"></div>
+      </div>
+    </div>
+    <div id="content" class="card stack"></div>
+  </section>
+</div>
+<script src="config.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
