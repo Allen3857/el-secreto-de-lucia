@@ -584,6 +584,12 @@ function finalStage(){
   <div class="tiles">${pool.map(x=>`<button class="tile" data-id="${x.id}" data-letter="${x.l}" type="button">${x.l}</button>`).join('')}</div>
   <div id="final-answer" class="answer">_ _ _ _ _ _ _</div>
   <div class="grid2"><button id="undo" class="btn" type="button">← Deshacer / 退回一張</button><button id="reset-final" class="btn" type="button">Reiniciar / 重新排列</button></div>
+  <div class="hints">
+    <button id="hint1-final" class="btn" type="button">💡 Hint 1 / 提示 1</button>
+    <button id="hint2-final" class="btn" type="button">💡 Hint 2 / 提示 2</button>
+    <button id="hint3-final" class="btn" type="button">💡 Hint 3 / 提示 3</button>
+  </div>
+  <div id="final-hintbox" class="hide panel body small"></div>
   <button id="check-final" class="primary" type="button">COMPROBAR / 確認答案</button><div id="feedback" class="hide panel body small"></div>`);
   const draw=()=>{
     q('#final-answer').textContent=s.final.length?s.final.map(x=>x.l).join(' '):'_ _ _ _ _ _ _';
@@ -598,6 +604,47 @@ function finalStage(){
   });
   q('#undo').onclick=()=>{const x=s.final.pop();if(x)s.used.delete(x.id);draw()};
   q('#reset-final').onclick=()=>{s.final=[];s.used.clear();draw()};
+
+  let finalHint1Used=false;
+  let finalHint2Used=false;
+  let finalHint3Used=false;
+
+  q('#hint1-final').onclick=()=>{
+    if(!finalHint1Used){
+      finalHint1Used=true;
+      totalHints++;
+      logEvent('hint','hint1');
+    }
+    q('#final-hintbox').classList.remove('hide');
+    q('#final-hintbox').innerHTML=
+      'Es una palabra que has visto varias veces en este juego.<br>' +
+      '這是一個你在遊戲裡看過很多次的西班牙文單字。';
+  };
+
+  q('#hint2-final').onclick=()=>{
+    if(!finalHint2Used){
+      finalHint2Used=true;
+      totalHints++;
+      logEvent('hint','hint2');
+    }
+    q('#final-hintbox').classList.remove('hide');
+    q('#final-hintbox').innerHTML=
+      'Es una palabra relacionada con lo que has estado haciendo durante todo el juego.<br>' +
+      '這個單字和你整個遊戲一直在做的事情有關。';
+  };
+
+  q('#hint3-final').onclick=()=>{
+    if(!finalHint3Used){
+      finalHint3Used=true;
+      totalHints++;
+      logEvent('hint','hint3');
+    }
+    q('#final-hintbox').classList.remove('hide');
+    q('#final-hintbox').innerHTML=
+      'Empieza con E y termina con A.<br>' +
+      '它以 E 開頭、A 結尾。';
+  };
+
   q('#check-final').onclick=()=>{
     const answer=s.final.map(x=>x.l).join('');
     const ok=answer==='ESCUCHA';
