@@ -179,13 +179,23 @@ let currentAudio=null;
 
 function chooseSpanishVoice(){
   if(!('speechSynthesis' in window))return;
+
   const voices=speechSynthesis.getVoices();
-  const es=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
-  spanishVoice=
-    es.find(v=>(v.lang||'').toLowerCase()==='es-es' && /google|microsoft|helena|pablo|alvaro|jorge|lucia/i.test(v.name)) ||
-    es.find(v=>(v.lang||'').toLowerCase()==='es-es') ||
-    es[0] || null;
+  const spanish=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
+
+  const femaleName=/helena|elvira|dalia|sabina|luc[ií]a|paulina|m[oó]nica|paloma|laura|soledad|mar[ií]a|carmen|female/i;
+  const maleName=/pablo|jorge|[aá]lvaro|ra[uú]l|diego|carlos|mateo|male/i;
+
+  spanishVoice =
+    spanish.find(v=>(v.lang||'').toLowerCase()==='es-es' && femaleName.test(v.name)) ||
+    spanish.find(v=>femaleName.test(v.name)) ||
+    spanish.find(v=>/google.*espa[nñ]ol|espa[nñ]ol.*google/i.test(v.name) && !maleName.test(v.name)) ||
+    spanish.find(v=>(v.lang||'').toLowerCase()==='es-es' && !maleName.test(v.name)) ||
+    spanish.find(v=>!maleName.test(v.name)) ||
+    spanish[0] ||
+    null;
 }
+
 if('speechSynthesis' in window){
   chooseSpanishVoice();
   speechSynthesis.addEventListener?.('voiceschanged',chooseSpanishVoice);
@@ -205,76 +215,73 @@ function stopSpeech(){
   }
 }
 
-function googleTtsUrl(text){
-  return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=' + encodeURIComponent(text);
-}
+function speakOne(text,{rate=.68,onEnd=null}={}){
+  if(!('speechSynthesis' in window)){
+    if(onEnd)onEnd();
+    return;
+  }
 
-function fallbackSpeak(text, rate=.60){
-  if(!('speechSynthesis' in window))return;
   chooseSpanishVoice();
   const u=new SpeechSynthesisUtterance(text);
   u.lang='es-ES';
   if(spanishVoice)u.voice=spanishVoice;
   u.rate=rate;
   u.pitch=1;
+
+  let finished=false;
+  const finish=()=>{
+    if(finished)return;
+    finished=true;
+    if(onEnd)onEnd();
+  };
+
+  u.onend=finish;
+  u.onerror=finish;
   speechSynthesis.speak(u);
 }
 
-function playWord(word,{repeat=2,rate=.88,gap=520}={}){
+function playWord(word,{repeat=2,rate=.68,gap=750}={}){
   registerAudio(word);
   stopSpeech();
   const runId=audioRunId;
   let count=0;
 
-  const playOnce=()=>{
+  const next=()=>{
     if(runId!==audioRunId)return;
-    const a=new Audio(googleTtsUrl(word));
-    currentAudio=a;
-    a.preload='auto';
-    a.playbackRate=rate;
-    a.preservesPitch=true;
 
-    a.onended=()=>{
-      if(runId!==audioRunId)return;
-      count++;
-      if(count<repeat){
-        setTimeout(playOnce,gap);
-      }else{
-        currentAudio=null;
+    speakOne(word,{
+      rate,
+      onEnd:()=>{
+        if(runId!==audioRunId)return;
+        count++;
+        if(count<repeat){
+          setTimeout(()=>{
+            if(runId===audioRunId)next();
+          },gap);
+        }
       }
-    };
-
-    a.onerror=()=>{
-      if(runId!==audioRunId)return;
-      currentAudio=null;
-      fallbackSpeak(word, Math.min(rate,.72));
-    };
-
-    a.play().catch(()=>{
-      if(runId!==audioRunId)return;
-      currentAudio=null;
-      fallbackSpeak(word, Math.min(rate,.72));
     });
   };
 
-  playOnce();
+  next();
 }
 
-function playSequence(words,{rate=.84,gap=1050,repeat=2,betweenPasses=2500,statusEl=null}={}){
+function playSequence(words,{rate=.68,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
   const runId=audioRunId;
-  let sequenceCount=0;
-  let i=0;
+  let pass=1;
+  let index=0;
 
-  const setStatus=(pass)=>{
+  const setStatus=(which)=>{
     if(!statusEl)return;
     const el=q(statusEl);
     if(!el)return;
-    if(pass===1){
+
+    if(which===1){
       el.classList.remove('hide');
       el.innerHTML='<strong>Primera vez</strong> / 第一次';
-    }else if(pass===2){
+    }else if(which===2){
       el.classList.remove('hide');
       el.innerHTML='<strong>Segunda vez</strong> / 第二次';
     }else{
@@ -283,55 +290,42 @@ function playSequence(words,{rate=.84,gap=1050,repeat=2,betweenPasses=2500,statu
     }
   };
 
-  const next=()=>{
+  const nextWord=()=>{
     if(runId!==audioRunId)return;
 
-    if(i>=words.length){
-      sequenceCount++;
-      if(sequenceCount>=repeat){
-        currentAudio=null;
-        setTimeout(()=>setStatus(0),500);
+    if(index>=words.length){
+      if(pass>=repeat){
+        setTimeout(()=>{
+          if(runId===audioRunId)setStatus(0);
+        },500);
         return;
       }
 
-      i=0;
+      pass++;
+      index=0;
+
       setTimeout(()=>{
         if(runId!==audioRunId)return;
-        setStatus(sequenceCount+1);
-        next();
+        setStatus(pass);
+        nextWord();
       },betweenPasses);
       return;
     }
 
-    const word=words[i++];
-    const a=new Audio(googleTtsUrl(word));
-    currentAudio=a;
-    a.preload='auto';
-    a.playbackRate=rate;
-    a.preservesPitch=true;
-
-    a.onended=()=>{
-      if(runId!==audioRunId)return;
-      setTimeout(next,gap);
-    };
-
-    a.onerror=()=>{
-      if(runId!==audioRunId)return;
-      currentAudio=null;
-      fallbackSpeak(word,.66);
-      setTimeout(next,1400);
-    };
-
-    a.play().catch(()=>{
-      if(runId!==audioRunId)return;
-      currentAudio=null;
-      fallbackSpeak(word,.66);
-      setTimeout(next,1400);
+    const word=words[index++];
+    speakOne(word,{
+      rate,
+      onEnd:()=>{
+        if(runId!==audioRunId)return;
+        setTimeout(()=>{
+          if(runId===audioRunId)nextWord();
+        },gap);
+      }
     });
   };
 
   setStatus(1);
-  next();
+  nextWord();
 }
 
 root.addEventListener('click',(event)=>{
@@ -487,8 +481,8 @@ function r5(){
     <div class="body"><strong>¿Suena como A o como B?</strong><div class="small muted">這段錄音聽起來像 A 還是 B？</div></div>
     <div class="grid2"><button class="btn" data-one data-value="A" aria-pressed="false" type="button">A</button><button class="btn" data-one data-value="B" aria-pressed="false" type="button">B</button></div>
     <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
-    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:.95,gap:460}));
-    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:.95,gap:460});
+    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:.76,gap:800}));
+    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:.76,gap:800});
     single('[data-one]');
     q('#check').onclick=()=>{
       if(s.choice===null){
@@ -516,7 +510,7 @@ function r5(){
   <div class="grid2"><button class="sound" data-r="pero" type="button">🔊 pero</button><button class="sound" data-r="perro" type="button">🔊 perro</button></div>
   <div class="grid2"><button class="btn" data-one data-value="pero" aria-pressed="false" type="button">pero</button><button class="btn" data-one data-value="perro" aria-pressed="false" type="button">perro</button></div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button><div id="feedback" class="hide panel body small"></div>`);
-  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:.95,gap:460}));
+  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:.76,gap:800}));
   single('[data-one]');
   q('#check').onclick=()=>{
     if(s.choice===null){
