@@ -179,36 +179,12 @@ let currentAudio=null;
 
 function chooseSpanishVoice(){
   if(!('speechSynthesis' in window))return;
-
   const voices=speechSynthesis.getVoices();
-  const spanish=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
-
-  // Restore the voice family that was used in the earlier working versions:
-  // prefer Google's Spanish voice first, then explicitly female Spanish voices.
-  const googleSpanish = spanish.find(v =>
-    /google/i.test(v.name) && /espa[nñ]ol|spanish/i.test(v.name)
-  );
-
-  const explicitFemale = spanish.find(v =>
-    /helena|elvira|dalia|sabina|luc[ií]a|paulina|m[oó]nica|paloma|laura|soledad|mar[ií]a|carmen|female/i.test(v.name)
-  );
-
-  const knownMale = /pablo|jorge|[aá]lvaro|ra[uú]l|diego|carlos|mateo|arnau|enrique|male/i;
-  const nonMaleSpain = spanish.find(v =>
-    (v.lang||'').toLowerCase()==='es-es' && !knownMale.test(v.name)
-  );
-  const nonMaleAny = spanish.find(v => !knownMale.test(v.name));
-
-  spanishVoice =
-    googleSpanish ||
-    explicitFemale ||
-    nonMaleSpain ||
-    nonMaleAny ||
-    spanish[0] ||
-    null;
-
-  // Useful only for troubleshooting; nothing is shown to students.
-  window.__luciaSpanishVoice = spanishVoice ? spanishVoice.name : '';
+  const es=voices.filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
+  spanishVoice=
+    es.find(v=>(v.lang||'').toLowerCase()==='es-es' && /google|microsoft|helena|pablo|alvaro|jorge|lucia/i.test(v.name)) ||
+    es.find(v=>(v.lang||'').toLowerCase()==='es-es') ||
+    es[0] || null;
 }
 
 if('speechSynthesis' in window){
@@ -230,7 +206,7 @@ function stopSpeech(){
   }
 }
 
-function speakOne(text,{rate=.68,onEnd=null}={}){
+function speakOne(text,{rate=.58,onEnd=null}={}){
   if(!('speechSynthesis' in window)){
     if(onEnd)onEnd();
     return;
@@ -255,7 +231,7 @@ function speakOne(text,{rate=.68,onEnd=null}={}){
   speechSynthesis.speak(u);
 }
 
-function playWord(word,{repeat=2,rate=.68,gap=750}={}){
+function playWord(word,{repeat=2,rate=.58,gap=750}={}){
   registerAudio(word);
   stopSpeech();
   const runId=audioRunId;
@@ -281,7 +257,7 @@ function playWord(word,{repeat=2,rate=.68,gap=750}={}){
   next();
 }
 
-function playSequence(words,{rate=.68,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
+function playSequence(words,{rate=.58,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
   const runId=audioRunId;
@@ -496,8 +472,8 @@ function r5(){
     <div class="body"><strong>¿Suena como A o como B?</strong><div class="small muted">這段錄音聽起來像 A 還是 B？</div></div>
     <div class="grid2"><button class="btn" data-one data-value="A" aria-pressed="false" type="button">A</button><button class="btn" data-one data-value="B" aria-pressed="false" type="button">B</button></div>
     <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
-    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:.76,gap:800}));
-    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:.76,gap:800});
+    qa('[data-ab]').forEach(b=>b.onclick=()=>playWord(b.dataset.ab,{repeat:2,rate:.78,gap:800}));
+    q('#mystery').onclick=()=>playWord('perro',{repeat:2,rate:.78,gap:800});
     single('[data-one]');
     q('#check').onclick=()=>{
       if(s.choice===null){
@@ -525,7 +501,7 @@ function r5(){
   <div class="grid2"><button class="sound" data-r="pero" type="button">🔊 pero</button><button class="sound" data-r="perro" type="button">🔊 perro</button></div>
   <div class="grid2"><button class="btn" data-one data-value="pero" aria-pressed="false" type="button">pero</button><button class="btn" data-one data-value="perro" aria-pressed="false" type="button">perro</button></div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button><div id="feedback" class="hide panel body small"></div>`);
-  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:.76,gap:800}));
+  qa('[data-r]').forEach(b=>b.onclick=()=>playWord(b.dataset.r,{repeat:2,rate:.78,gap:800}));
   single('[data-one]');
   q('#check').onclick=()=>{
     if(s.choice===null){
