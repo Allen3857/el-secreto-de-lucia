@@ -173,7 +173,8 @@ function wrong(h){wrongSfx();setFeedback(h,'bad');}
 function correctFb(h){correctSfx();setFeedback(h,'good');}
 
 
-const AUDIO_FILES = {"hotel": "hotel.mp3", "mesa": "mesa.mp3", "hospital": "hospital.mp3", "jardín": "jardin.mp3", "musa": "musa.mp3", "moto": "moto.mp3", "masa": "masa.mp3", "misa": "misa.mp3", "casa": "casa.mp3", "cine": "cine.mp3", "cubo": "cubo.mp3", "jamón": "jamon.mp3", "gente": "gente.mp3", "gato": "gato.mp3", "girasol": "girasol.mp3", "pero": "pero.mp3", "perro": "perro.mp3", "niño": "nino.mp3", "secreto": "secreto.mp3"};
+const AUDIO_FILES = {"secreto": "secreto.mp3", "perro": "perro.mp3", "pero": "pero.mp3", "niño": "niño.mp3", "muno": "muno.mp3", "mono": "mono.mp3", "mino": "mino.mp3", "meno": "meno.mp3", "mano": "mano.mp3", "misa": "misa.mp3", "jardín": "jardín.mp3", "jamón": "jamón.mp3", "hospital": "hospital.mp3", "girasol": "girasol.mp3", "gente": "gente.mp3", "gato": "gato.mp3", "cubo": "cubo.mp3", "cine": "cine.mp3", "casa": "casa.mp3"};
+
 let audioRunId=0;
 let currentAudio=null;
 
@@ -188,41 +189,44 @@ function stopSpeech(){
   }
 }
 
-function audioPath(word){
+function getAudioPath(word){
   const filename=AUDIO_FILES[word];
-  return filename ? `audio/${filename}` : '';
+  if(!filename){
+    console.error('No audio filename configured for:',word);
+    return '';
+  }
+  return `audio/${filename}`;
 }
 
-function playFixedAudio(word,{rate=1,onEnd=null}={}){
-  const src=audioPath(word);
+function playAudioFile(word,{rate=1,onEnd=null}={}){
+  const src=getAudioPath(word);
   if(!src){
-    console.error('Missing fixed audio:',word);
     if(onEnd)onEnd();
     return;
   }
 
-  const a=new Audio(src);
-  currentAudio=a;
-  a.preload='auto';
-  a.playbackRate=rate;
-  a.preservesPitch=true;
+  const audio=new Audio(src);
+  currentAudio=audio;
+  audio.preload='auto';
+  audio.playbackRate=rate;
+  audio.preservesPitch=true;
 
-  let done=false;
+  let finished=false;
   const finish=()=>{
-    if(done)return;
-    done=true;
-    if(currentAudio===a)currentAudio=null;
+    if(finished)return;
+    finished=true;
+    if(currentAudio===audio)currentAudio=null;
     if(onEnd)onEnd();
   };
 
-  a.onended=finish;
-  a.onerror=()=>{
-    console.error('Audio file failed:',src);
+  audio.onended=finish;
+  audio.onerror=()=>{
+    console.error('Audio file could not be loaded:',src);
     finish();
   };
 
-  a.play().catch(err=>{
-    console.error('Audio play failed:',src,err);
+  audio.play().catch(err=>{
+    console.error('Audio playback failed:',src,err);
     finish();
   });
 }
@@ -230,18 +234,22 @@ function playFixedAudio(word,{rate=1,onEnd=null}={}){
 function playWord(word,{repeat=2,rate=1,gap=750}={}){
   registerAudio(word);
   stopSpeech();
+
   const runId=audioRunId;
   let count=0;
 
   const next=()=>{
     if(runId!==audioRunId)return;
-    playFixedAudio(word,{
+
+    playAudioFile(word,{
       rate,
       onEnd:()=>{
         if(runId!==audioRunId)return;
         count++;
         if(count<repeat){
-          setTimeout(()=>{ if(runId===audioRunId) next(); },gap);
+          setTimeout(()=>{
+            if(runId===audioRunId)next();
+          },gap);
         }
       }
     });
@@ -253,6 +261,7 @@ function playWord(word,{repeat=2,rate=1,gap=750}={}){
 function playSequence(words,{rate=1,gap=1150,repeat=2,betweenPasses=2800,statusEl=null}={}){
   registerAudio(words.join(' | '));
   stopSpeech();
+
   const runId=audioRunId;
   let pass=1;
   let index=0;
@@ -279,7 +288,9 @@ function playSequence(words,{rate=1,gap=1150,repeat=2,betweenPasses=2800,statusE
 
     if(index>=words.length){
       if(pass>=repeat){
-        setTimeout(()=>{ if(runId===audioRunId) setStatus(0); },500);
+        setTimeout(()=>{
+          if(runId===audioRunId)setStatus(0);
+        },500);
         return;
       }
 
@@ -295,11 +306,16 @@ function playSequence(words,{rate=1,gap=1150,repeat=2,betweenPasses=2800,statusE
     }
 
     const word=words[index++];
-    playFixedAudio(word,{
+
+    // IMPORTANT: each word is played ONCE per pass.
+    // The full five-word sequence is what repeats twice.
+    playAudioFile(word,{
       rate,
       onEnd:()=>{
         if(runId!==audioRunId)return;
-        setTimeout(()=>{ if(runId===audioRunId) nextWord(); },gap);
+        setTimeout(()=>{
+          if(runId===audioRunId)nextWord();
+        },gap);
       }
     });
   };
@@ -369,23 +385,28 @@ function reveal(es,zh){
 
 function r1(){
   show(`<div class="body">Lucía te da cuatro palabras.<div class="small muted">Lucía 給了你四個單字。</div></div>
-  <div class="body"><strong>Escucha las cuatro palabras. ¿En qué dos palabras hay una letra al principio que no se oye? Selecciona dos.</strong><div class="small muted">請聽這四個單字。哪兩個單字開頭有一個看得到、卻聽不到的字母？請選兩個。</div></div>
-  <div class="wordgrid">${['hotel','mesa','hospital','jardín'].map(w=>`<div class="wordrow"><button class="btn text-left" data-word="${w}" aria-pressed="false" type="button">${w}</button><button class="sound" data-sound="${w}" type="button">🔊</button></div>`).join('')}</div>
+  <div class="body"><strong>Escucha las cuatro palabras. ¿Cuál empieza con una letra que se escribe pero no se oye?</strong><div class="small muted">請聽這四個單字。哪一個單字開頭有一個看得到、卻聽不到的字母？</div></div>
+  <div class="wordgrid">${['hospital','jardín','casa','gato'].map(w=>`<div class="wordrow"><button class="btn text-left" data-one data-value="${w}" aria-pressed="false" type="button">${w}</button><button class="sound" data-sound="${w}" type="button">🔊</button></div>`).join('')}</div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
+
   qa('[data-sound]').forEach(b=>b.onclick=()=>playWord(b.dataset.sound));
-  qa('[data-word]').forEach(b=>b.onclick=()=>{
-    const w=b.dataset.word;
-    if(s.selected.has(w)){s.selected.delete(w);b.setAttribute('aria-pressed','false')}
-    else if(s.selected.size<2){s.selected.add(w);b.setAttribute('aria-pressed','true')}
-  });
+  single('[data-one]');
+
   q('#check').onclick=()=>{
-    if(s.selected.size!==2)return fb('Selecciona dos palabras.<br>請選兩個單字。');
-    const answer=[...s.selected].sort().join('|');
-    const ok=s.selected.has('hotel')&&s.selected.has('hospital');
-    recordAttempt('pista1',answer,ok);
-    ok?reveal('<strong>hotel</strong> y <strong>hospital</strong> empiezan con una h que no se pronuncia.','<strong>hotel</strong> 和 <strong>hospital</strong> 都以不發音的 h 開頭。'):wrong('Escucha otra vez y fíjate en el primer sonido.<br>再聽一次，注意每個單字的第一個聲音。');
+    if(s.choice===null)return fb('Selecciona una respuesta.<br>請先選一個答案。');
+
+    const ok=s.choice==='hospital';
+    recordAttempt('pista1',s.choice,ok);
+
+    ok
+      ? reveal('<strong>hospital</strong> empieza con una h que no se pronuncia.','<strong>hospital</strong> 以不發音的 h 開頭。')
+      : wrong('Escucha otra vez y fíjate en el primer sonido.<br>再聽一次，注意第一個聲音。');
   };
-  bindHints('Compara la primera letra con el primer sonido.<br>比較第一個字母和實際聽到的第一個聲音。','En español, la <strong>h</strong> normalmente no se pronuncia.<br>西班牙文的 h 通常不發音。');
+
+  bindHints(
+    'Compara la primera letra con el primer sonido.<br>比較第一個字母和實際聽到的第一個聲音。',
+    'En español, la <strong>h</strong> normalmente no se pronuncia.<br>西班牙文的 h 通常不發音。'
+  );
 }
 
 function r2(){
@@ -394,18 +415,29 @@ function r2(){
   <div class="body"><strong>¿En cuál de las cinco palabras escuchas la vocal “e”?</strong><div class="small muted">五個單字中，你在第幾個單字聽到母音 e？</div></div>
   <div class="grid5">${[1,2,3,4,5].map(n=>`<button class="btn" data-one data-value="${n}" aria-pressed="false" type="button">${n}</button>`).join('')}</div>
   <button id="check" class="primary" type="button">COMPROBAR / 確認答案</button>${hints()}<div id="feedback" class="hide panel body small"></div>`);
+
   q('#play').onclick=()=>playSequence(
-    ['musa','mesa','moto','masa','misa'],
-    {repeat:2,betweenPasses:2500,statusEl:'#p2-pass'}
+    ['mono','mano','mino','meno','muno'],
+    {repeat:2,betweenPasses:2800,statusEl:'#p2-pass'}
   );
+
   single('[data-one]');
+
   q('#check').onclick=()=>{
     if(s.choice===null)return fb('Selecciona una respuesta.<br>請先選一個答案。');
-    const ok=s.choice==='2';
+
+    const ok=s.choice==='4';
     recordAttempt('pista2',s.choice,ok);
-    ok?reveal('La segunda palabra es <strong>mesa</strong>; allí escuchas la vocal <strong>e</strong>.','第 2 個單字是 <strong>mesa</strong>，其中可以聽到母音 <strong>e</strong>。'):wrong('Escucha otra vez y busca la palabra que contiene el sonido e.<br>再聽一次，找出有 e 聲音的單字。');
+
+    ok
+      ? reveal('La cuarta palabra es <strong>meno</strong>; allí escuchas la vocal <strong>e</strong>.','第 4 個單字是 <strong>meno</strong>，其中可以聽到母音 <strong>e</strong>。')
+      : wrong('Escucha otra vez y busca la palabra que contiene el sonido e.<br>再聽一次，找出有 e 聲音的單字。');
   };
-  bindHints('No necesitas saber el significado. Escucha solo las vocales.<br>不需要知道單字意思，只注意母音。','Escucha las cinco palabras una por una.<br>把五個單字一個一個聽清楚。');
+
+  bindHints(
+    'No necesitas saber el significado. Escucha solo las vocales.<br>不需要知道單字意思，只注意母音。',
+    'Escucha las cinco palabras una por una.<br>把五個單字一個一個聽清楚。'
+  );
 }
 
 function r3(){
