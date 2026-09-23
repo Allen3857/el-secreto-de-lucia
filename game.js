@@ -45,23 +45,29 @@ function currentStageLabel(){
 }
 
 function sendLog(payload){
-  if(typeof BACKEND_URL==='undefined' || !BACKEND_URL || BACKEND_URL.includes('PASTE')) return;
+  const backendUrl=window.APP_CONFIG?.BACKEND_URL;
+
+  if(!backendUrl){
+    console.error('BACKEND_URL is missing. Check config.js.');
+    return;
+  }
+
   const body=JSON.stringify({
     ...payload,
     session_id:sessionId,
     student_id:student.id||'',
     name:student.name||'',
-    game_id:'lucia_v11',
+    game_id:'lucia_final',
     client_time:new Date().toISOString()
   });
 
-  fetch(BACKEND_URL,{
+  fetch(backendUrl,{
     method:'POST',
     mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=UTF-8'},
     body,
     keepalive:true
-  }).catch(()=>{});
+  }).catch(err=>console.error('Backend send failed:',err));
 }
 
 function logEvent(event,detail=''){
